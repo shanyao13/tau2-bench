@@ -53,7 +53,7 @@ def get_global_user_sim_guidelines(use_tools: bool = False) -> str:
             user_sim_guidelines = fp.read()
     return user_sim_guidelines
 
-
+# 优化telecom transfer的prompt
 SYSTEM_PROMPT = """
 {global_user_sim_guidelines}
 
@@ -61,6 +61,29 @@ SYSTEM_PROMPT = """
 {instructions}
 </scenario>
 """.strip()
+
+# OPTIMIZED_USER_PROMPT = """
+# # Note:
+# - Do not generate the '###TRANSFER###' before agent clearly tells "YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.".
+# Example:
+# Case1:
+# - agent: "Would you like me to transfer you to a human agent who can assist you with these options and help get your service restored?"
+# - user: "Yes, please transfer me to a human agent."
+# Case2:
+# - agent: "YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON."
+# - user: "###TRANSFER###"
+# """.strip()
+
+# SYSTEM_PROMPT = """
+# {global_user_sim_guidelines}
+
+# <scenario>
+# {instructions}
+# </scenario>
+
+# {optimized_user_prompt}
+# """.strip()
+
 
 
 class UserSimulator(BaseUser):
@@ -95,6 +118,7 @@ class UserSimulator(BaseUser):
         system_prompt = SYSTEM_PROMPT.format(
             global_user_sim_guidelines=self.global_simulation_guidelines,
             instructions=self.instructions,
+            # optimized_user_prompt=OPTIMIZED_USER_PROMPT,           # changed
         )
         return system_prompt
 
@@ -152,7 +176,7 @@ class UserSimulator(BaseUser):
             state.messages.extend(message.tool_messages)
         else:
             state.messages.append(message)
-        messages = state.system_messages + state.flip_roles()
+        messages = state.system_messages + state.flip_roles() #message！！！
 
         # Generate response
         assistant_message = generate(

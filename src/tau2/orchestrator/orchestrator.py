@@ -463,10 +463,10 @@ class Orchestrator:
         )
         # AGENT/ENV -> USER
         if self.from_role in [Role.AGENT, Role.ENV] and self.to_role == Role.USER:
-            user_msg, self.user_state = self.user.generate_next_message(
+            user_msg, self.user_state = self.user.generate_next_message( #调用模型，然后json输出message及tool call相关内容，问题：模型端如何调用了工具？？？
                 self.message, self.user_state
             )
-            user_msg.validate()
+            user_msg.validate() #检查输出是否符合规范：has_text_content,is_tool_call是否为None或""，否则报错
             if UserSimulator.is_stop(user_msg):
                 self.done = True
                 self.termination_reason = TerminationReason.USER_STOP

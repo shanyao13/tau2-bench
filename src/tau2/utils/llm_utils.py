@@ -199,8 +199,8 @@ def generate(
     if kwargs.get("num_retries") is None:
         kwargs["num_retries"] = DEFAULT_MAX_RETRIES
 
-    if model.startswith("claude") and not ALLOW_SONNET_THINKING:
-        kwargs["thinking"] = {"type": "disabled"}
+    # if model.startswith("claude") and not ALLOW_SONNET_THINKING:
+    #     kwargs["thinking"] = {"type": "disabled"}
     litellm_messages = to_litellm_messages(messages)
     tools = [tool.openai_schema for tool in tools] if tools else None
     if tools and tool_choice is None:
@@ -211,11 +211,17 @@ def generate(
             messages=litellm_messages,
             tools=tools,
             tool_choice=tool_choice,
+            reasoning_effort="low",
             **kwargs,
         )
     except Exception as e:
         logger.error(e)
         raise e
+    # # ======= 在这里加入以下两行测试代码 =======
+    # print("\n======= Anthropic RAW MESSAGE =======")
+    # print(response)  # 打印底层返回的消息对象
+    # print("====================================\n")
+    # # =========================================
     cost = get_response_cost(response)
     usage = get_response_usage(response)
     response = response.choices[0]
@@ -229,6 +235,12 @@ def generate(
     assert response.message.role == "assistant", (
         "The response should be an assistant message"
     )
+    # # ======= 在这里加入以下两行测试代码 =======
+    # print("\n======= DEEPSEEK RAW MESSAGE =======")
+    # print(response.message)  # 打印底层返回的消息对象
+    # print("====================================\n")
+    # # =========================================
+
     content = response.message.content
     tool_calls = response.message.tool_calls or []
     tool_calls = [

@@ -129,7 +129,7 @@ def run_domain(config: RunConfig) -> Results:
         tasks = [task for task in tasks if LLMGTAgent.check_valid_task(task)]
         num_tasks = len(tasks)
         console_text = Text(
-            text=f"Running {num_tasks} out of {total_num_tasks} tasks for GT agent.",
+            text=f"Running {num_tasks} out of {total_num_tasks} tasks for GT agent.",  # GT ground truth agent
             style="bold green",
         )
         ConsoleDisplay.console.print(console_text)
@@ -138,7 +138,7 @@ def run_domain(config: RunConfig) -> Results:
         tasks = [task for task in tasks if LLMSoloAgent.check_valid_task(task)]
         num_tasks = len(tasks)
         console_text = Text(
-            text=f"Running {num_tasks} out of {total_num_tasks} tasks for solo agent.",
+            text=f"Running {num_tasks} out of {total_num_tasks} tasks for solo agent.",  # solo agent 
             style="bold green",
         )
         ConsoleDisplay.console.print(console_text)
@@ -375,7 +375,7 @@ def run_tasks(
             _save(simulation)
         except Exception as e:
             logger.error(f"Error running task {task.id}, trial {trial}: {e}")
-            raise e
+            return None
         return simulation
 
     args = []
@@ -393,7 +393,7 @@ def run_tasks(
 
     with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
         res = list(executor.map(_run, *zip(*args)))
-        simulation_results.simulations.extend(res)
+        simulation_results.simulations.extend([r for r in res if r is not None])
     ConsoleDisplay.console.print(
         "\n✨ [bold green]Successfully completed all simulations![/bold green]\n"
         "To review the simulations, run: [bold blue]tau2 view[/bold blue]"
@@ -451,7 +451,7 @@ def run_task(
     AgentConstructor = registry.get_agent_constructor(agent)
 
     solo_mode = False
-    if issubclass(AgentConstructor, LLMAgent):
+    if issubclass(AgentConstructor, LLMAgent):         # AgentConstructor？？？
         agent = AgentConstructor(
             tools=environment.get_tools(),
             domain_policy=environment.get_policy(),
@@ -504,7 +504,7 @@ def run_task(
         llm_args=llm_args_user,
     )
 
-    orchestrator = Orchestrator(
+    orchestrator = Orchestrator(           #实例化Orchestrator，组装系统提示词等，并run simulation
         domain=domain,
         agent=agent,
         user=user,
@@ -518,13 +518,26 @@ def run_task(
     )
     simulation = orchestrator.run()
 
-    reward_info = evaluate_simulation(
-        domain=domain,
-        task=task,
-        simulation=simulation,
-        evaluation_type=evaluation_type,
-        solo_mode=solo_mode,
-    )
+    import time
+    max_eval_retries = 3
+    reward_info = None
+    for attempt in range(max_eval_retries):
+        try:
+            reward_info = evaluate_simulation(    #评估simulation
+                domain=domain,
+                task=task,
+                simulation=simulation,
+                evaluation_type=evaluation_type,
+                solo_mode=solo_mode,
+            )
+            break
+        except Exception as e:
+            if attempt < max_eval_retries - 1:
+                logger.warning(f"Evaluation failed (attempt {attempt + 1}/{max_eval_retries}) with error: {e}. Retrying after 2 seconds...")
+                time.sleep(2)
+            else:
+                logger.error(f"Evaluation failed after {max_eval_retries} attempts.")
+                raise e
 
     simulation.reward_info = reward_info
 
